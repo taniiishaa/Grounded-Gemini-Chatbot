@@ -1,227 +1,208 @@
-# 🤖 Gemini Grounded Chatbot
+# 🔎 Grounded Gemini Chat
 
-> A conversational AI experiment built with the **Google Gemini API**, combining multi-turn conversation with **Google Search grounding** to bring real-time information into AI responses.
+> **A conversational AI that doesn't have to rely on memory alone.**
 
-![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge\&logo=python\&logoColor=white)
-![Gemini](https://img.shields.io/badge/Google%20Gemini-2.5%20Flash-4285F4?style=for-the-badge\&logo=google\&logoColor=white)
-![Google Search](https://img.shields.io/badge/Google%20Search-Grounded%20Responses-EA4335?style=for-the-badge\&logo=google\&logoColor=white)
-![API](https://img.shields.io/badge/API-Generative%20AI-8E75B2?style=for-the-badge)
+Most chatbots can generate fluent answers.
+The real challenge is answering questions that depend on **what is happening right now**.
 
----
+**Grounded Gemini Chat** explores that idea by connecting Google's Gemini model with **Google Search grounding**, allowing the chatbot to look up relevant web information while maintaining a continuous conversation.
 
-## 🌐 Why Grounding Matters
+Instead of treating every prompt as an isolated question, the system combines:
 
-Large language models are powerful at generating answers, but they don't automatically know what is happening **right now**.
-
-Ask a model about a recent event, today's information, or something that changed recently, and relying only on its internal knowledge can produce outdated or incorrect results.
-
-This project explores a simple but important idea:
-
-> **Let the model search for current information when the question needs it.**
-
-The chatbot connects **Gemini 2.5 Flash** with Google's Search tool, allowing responses to be grounded in information retrieved from the web.
+**Conversation context + Generative AI + Web Search**
 
 ---
 
-## 🧠 The Core Idea
+## 💭 Why Grounding?
 
-The system follows this loop:
+Imagine asking a normal LLM:
 
 ```text
-                  ┌──────────────────┐
-                  │    User Prompt   │
-                  └────────┬─────────┘
-                           │
-                           ▼
-                  ┌──────────────────┐
-                  │ Gemini Chat      │
-                  │ Session          │
-                  └────────┬─────────┘
-                           │
-                    Does the query
-                    need fresh info?
-                       /       \
-                     Yes        No
-                     /           \
-                    ▼             ▼
-          ┌────────────────┐   ┌─────────────┐
-          │ Google Search  │   │ Gemini      │
-          │ Grounding Tool │   │ Knowledge   │
-          └───────┬────────┘   └──────┬──────┘
-                  │                   │
-                  └─────────┬─────────┘
-                            ▼
-                  ┌──────────────────┐
-                  │ Grounded Gemini  │
-                  │     Response     │
-                  └──────────────────┘
+"What happened in the latest football match?"
 ```
 
-The important part is that **search is exposed to Gemini as a tool**, rather than manually building a separate search pipeline.
+The model may know historical information, but it cannot magically know events that happened after its knowledge cutoff.
+
+With web grounding, the flow becomes:
+
+```text
+User Question
+      │
+      ▼
+Gemini
+      │
+      │  Needs current information?
+      ▼
+Google Search
+      │
+      ▼
+Relevant Web Results
+      │
+      ▼
+Gemini interprets the information
+      │
+      ▼
+Grounded Response
+```
+
+The goal of this project is simple:
+
+> **Let the model generate the answer, but give it access to information from the web when needed.**
 
 ---
 
-## 🔍 Gemini + Google Search
+## 🧠 The Interesting Part
 
-The project uses the Google GenAI SDK to provide Gemini with a Google Search tool.
+This isn't just a chatbot calling an LLM API.
+
+The project combines two different capabilities:
+
+| Capability            | Role                                        |
+| --------------------- | ------------------------------------------- |
+| 🤖 Gemini 2.5 Flash   | Understands prompts and generates responses |
+| 🌐 Google Search      | Provides up-to-date web information         |
+| 💬 Chat Session       | Maintains conversational context            |
+| 🔗 Grounding Metadata | Exposes the searches used for a response    |
+
+That combination turns a basic question-answering program into a small experiment in **grounded generative AI**.
+
+---
+
+## 🔄 How a Conversation Works
+
+The application creates a Gemini chat session and attaches Google's search tool to the model configuration.
+
+Once the user enters a question:
+
+```text
+┌──────────────────────────┐
+│          USER            │
+│ "What's happening today?"│
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│       GEMINI 2.5 FLASH   │
+│      Understand prompt   │
+└────────────┬─────────────┘
+             │
+       ┌─────┴─────┐
+       │           │
+       ▼           ▼
+   No Search    Need Search
+       │           │
+       │           ▼
+       │    ┌──────────────┐
+       │    │ Google Search│
+       │    └──────┬───────┘
+       │           │
+       │           ▼
+       │    Web Information
+       │           │
+       └─────┬─────┘
+             ▼
+      Generated Response
+             │
+             ▼
+        User sees answer
+```
+
+The model decides when web grounding is useful through the configured Google Search tool.
+
+---
+
+## 💬 It Remembers the Conversation
+
+A useful chatbot shouldn't force the user to repeat everything.
+
+The project uses a Gemini **chat session**, so messages are sent through the same conversational context.
+
+For example:
+
+```text
+You: Who won the latest Grand Prix?
+
+Gemini: ...
+
+You: Where was it held?
+
+Gemini: ...
+```
+
+The second question can be interpreted in relation to the first instead of being treated as a completely unrelated prompt.
+
+This makes the interaction feel much closer to an actual conversation.
+
+---
+
+## 🔍 Grounding Visibility
+
+One detail I particularly wanted to explore was:
+
+**What did the model actually search for?**
+
+When grounding metadata is available, the application extracts the search queries used by Gemini and displays them alongside the response.
 
 Conceptually:
 
 ```text
-Gemini
+Gemini (Grounded):
+[Generated response...]
+
+Used Google Search with queries:
+["latest Grand Prix winner", ...]
+```
+
+This provides a small window into the model's grounding process instead of hiding the search step completely.
+
+---
+
+## 🏗️ Under the Hood
+
+The implementation is intentionally small.
+
+There is no large framework stack hiding the core idea.
+
+```text
+Python
   │
-  │ decides it needs external information
-  ▼
-Google Search Tool
+  ├── google-genai
+  │       │
+  │       ├── Gemini 2.5 Flash
+  │       │
+  │       └── Google Search Tool
   │
-  │ retrieves current information
-  ▼
-Grounding Metadata
+  ├── Chat Session
   │
-  ▼
-Gemini Response
+  └── Terminal Interface
 ```
 
-The application also checks the returned `grounding_metadata` to determine whether Google Search was used and prints the search queries generated during the interaction.
+### Core flow
 
-This makes the grounding process observable instead of treating it as a hidden operation.
+```python
+client
+  ↓
+Gemini model
+  ↓
+Google Search tool configured
+  ↓
+Chat session created
+  ↓
+User prompt
+  ↓
+send_message()
+  ↓
+Response + grounding metadata
+```
+
+The project therefore stays focused on understanding **how grounded generation works**, rather than adding unnecessary application complexity.
 
 ---
 
-## 💬 Conversations That Keep Context
-
-The chatbot isn't implemented as independent one-off prompts.
-
-A Gemini chat session is created once and reused:
+## 📁 Project Anatomy
 
 ```text
-User: "Who is the current CEO of X?"
-          ↓
-Gemini + Search
-          ↓
-Response
-          │
-          │ conversation state retained
-          ▼
-User: "What did they say about AI?"
-          ↓
-Gemini uses previous context
-          ↓
-Context-aware response
-```
-
-This allows follow-up questions to build naturally on previous turns.
-
----
-
-## ⚙️ Under the Hood
-
-The application is intentionally small, but several important pieces are working together:
-
-```mermaid
-flowchart TB
-    A[User Input] --> B[Gemini Chat Session]
-
-    B --> C[Gemini 2.5 Flash]
-
-    C --> D{Google Search Needed?}
-
-    D -->|Yes| E[Google Search Tool]
-    D -->|No| F[Generate Response]
-
-    E --> G[Grounding Metadata]
-    G --> F
-
-    F --> H[Response to User]
-
-    H --> I[Conversation Context]
-    I --> B
-```
-
-### Main components
-
-| Component              | Responsibility                       |
-| ---------------------- | ------------------------------------ |
-| **Gemini 2.5 Flash**   | Generates conversational responses   |
-| **Google Search**      | Provides fresh web information       |
-| **Google GenAI SDK**   | Connects Python to Gemini            |
-| **Chat Session**       | Maintains multi-turn context         |
-| **Grounding Metadata** | Exposes search/grounding information |
-| **Python CLI**         | Provides the user interaction layer  |
-
----
-
-## 🧱 Architecture at a Glance
-
-```text
-┌─────────────────────────────────────────────┐
-│                  USER                       │
-│                                             │
-│   "Ask a question about something current" │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│             CHAT SESSION                    │
-│                                             │
-│        Gemini 2.5 Flash + Config            │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│              TOOL LAYER                     │
-│                                             │
-│        Google Search Grounding              │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│             RESPONSE LAYER                  │
-│                                             │
-│  Answer + Grounding Metadata + Search Info  │
-└─────────────────────────────────────────────┘
-```
-
----
-
-## 🧪 What Makes This Different From a Basic Chatbot?
-
-A conventional API chatbot might look like:
-
-```text
-Prompt → Model → Response
-```
-
-This project introduces an external information source:
-
-```text
-Prompt
-  ↓
-Model
-  ↓
-Tool Decision
-  ↓
-Google Search
-  ↓
-Grounded Context
-  ↓
-Model
-  ↓
-Response
-```
-
-That small architectural change introduces an important concept in modern AI applications:
-
-### **Tool-augmented generation**
-
-The model isn't limited to generating from its internal knowledge—it can interact with an external capability when required.
-
----
-
-## 📁 Project Structure
-
-```text
-Advanced-Generative-AI-Chatbot-with-Real-Time-Grounding/
+grounded-gemini-chat/
 │
 ├── chatbot.py
 ├── requirements.txt
@@ -235,262 +216,224 @@ Contains the complete chatbot implementation:
 * Gemini client initialization
 * Google Search tool configuration
 * Chat session creation
-* User input loop
+* Interactive prompt loop
 * Response generation
 * Grounding metadata inspection
+* Search-query display
 * Error handling
 
 ### `requirements.txt`
 
-Defines the Python dependencies required to run the application.
+Contains the Python packages required by the project.
 
 ---
 
-## 🛠️ Tech Stack
-
-### AI
-
-* **Google Gemini 2.5 Flash**
-* **Google Search grounding**
-
-### Development
-
-* **Python**
-* **Google GenAI SDK**
-* **python-dotenv**
-
-### Architecture Concepts
-
-* Generative AI
-* Tool calling
-* Grounded generation
-* Multi-turn conversations
-* External information retrieval
-* API-based AI applications
-
----
-
-## 🚀 Getting Started
+## ⚙️ Getting It Running
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/taniiishaa/Advanced-Generative-AI-Chatbot-with-Real-Time-Grounding.git
-
-cd Advanced-Generative-AI-Chatbot-with-Real-Time-Grounding
+git clone https://github.com/taniiishaa/grounded-gemini-chat.git
+cd grounded-gemini-chat
 ```
 
-### 2. Install dependencies
+### 2. Create a virtual environment
+
+```bash
+python -m venv venv
+```
+
+Activate it on Windows:
+
+```bash
+venv\Scripts\activate
+```
+
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure your API key
+### 4. Configure your Gemini API access
 
-Set your Gemini API key as an environment variable:
+The Google GenAI client reads the required API configuration from the environment.
+
+For example:
 
 ```text
-GEMINI_API_KEY=your_api_key_here
+GEMINI_API_KEY=your_api_key
 ```
 
-You can also use a `.env` file locally.
+Keep API keys out of the repository.
 
-**Never commit your API key to GitHub.**
-
-### 4. Start the chatbot
+### 5. Start chatting
 
 ```bash
 python chatbot.py
 ```
 
-You should see:
+You'll see:
 
 ```text
 --- Gemini Chatbot Initialized (with Google Search) ---
 Start chatting. Ask a current events question.
 ```
 
-Then start chatting directly from the terminal.
+Then simply start asking questions.
 
----
-
-## 🧪 Example Interaction
+To stop:
 
 ```text
-You: What are the latest developments in generative AI?
-
-Gemini (Grounded):
-[Generated response based on current information]
-
-[Used Google Search with queries: [...]]
+quit
 ```
 
-You can then continue the conversation:
+or
 
 ```text
-You: Which one is most significant?
-
-Gemini:
-[Context-aware response]
-```
-
-To exit:
-
-```text
-You: quit
-```
-
-or:
-
-```text
-You: exit
+exit
 ```
 
 ---
 
-## 🔐 Environment Variables
+## 🧪 Try Questions Like These
 
-The application expects:
-
-```text
-GEMINI_API_KEY
-```
-
-Recommended local setup:
+The most interesting prompts are questions where **fresh information matters**.
 
 ```text
-project/
-│
-├── chatbot.py
-├── requirements.txt
-├── .env
-└── README.md
+What are the latest developments in AI?
+
+What happened in today's major news?
+
+Who won the latest Formula 1 race?
+
+What are the newest features announced by Google?
+
+What's happening in the technology industry today?
 ```
 
-Example `.env`:
-
-```text
-GEMINI_API_KEY=your_key_here
-```
-
-Add `.env` to `.gitignore` before pushing the project.
+You can also continue the conversation naturally with follow-up questions.
 
 ---
 
-## 🧩 Concepts Explored
+## 🛠️ Technology Used
 
-This project served as a practical introduction to several ideas behind modern AI applications:
+**Language**
 
-### 01 — Generative AI
+`Python`
 
-Using a foundation model to generate natural-language responses.
+**AI Model**
 
-### 02 — Tool Use
+`Gemini 2.5 Flash`
 
-Giving an AI model access to an external capability rather than relying entirely on its built-in knowledge.
+**AI SDK**
 
-### 03 — Grounding
+`Google GenAI SDK`
 
-Connecting generated answers with externally retrieved information.
+**Grounding**
 
-### 04 — Multi-turn Context
+`Google Search`
 
-Maintaining a conversation through a persistent chat session.
+**Interface**
 
-### 05 — API Integration
+`Terminal / CLI`
 
-Connecting a Python application to a cloud-based generative AI service.
+**Environment**
 
-### 06 — Observability
-
-Inspecting grounding metadata and search queries to understand when external information was used.
+`Python virtual environment + environment variables`
 
 ---
 
-## 🔬 From Chatbot → AI System
+## 🔐 A Small but Important Detail
 
-The project demonstrates a progression:
+API credentials should **never** be hard-coded into source files.
 
-```text
-                BASIC CHATBOT
-                     │
-                     ▼
-              Model API Call
-                     │
-                     ▼
-              Multi-turn Chat
-                     │
-                     ▼
-                Tool Calling
-                     │
-                     ▼
-              Google Search
-                     │
-                     ▼
-            Grounded Generation
-                     │
-                     ▼
-             More Useful AI
+Instead of:
+
+```python
+api_key = "MY_SECRET_KEY"
 ```
 
-This pattern is one of the foundations behind more advanced AI applications where models interact with **tools, APIs, databases and external services**.
+use environment-based configuration.
+
+This keeps credentials outside the source code and makes the project safer to share publicly on GitHub.
 
 ---
 
-## 🚀 Possible Extensions
+## 📌 What This Project Taught Me
 
-This implementation is intentionally lightweight, but it provides a foundation for expanding the system into a richer AI application.
+Building this project helped me understand several concepts that are easy to overlook when working with LLMs:
 
-### Interface
-
-* Streamlit or web-based chat UI
-* Streaming responses
-* Conversation sidebar
-* Chat history export
-
-### Intelligence
-
-* Custom system instructions
-* Specialized AI personas
-* Structured responses
-* Query classification
-* Better source presentation
-
-### Tools
-
-```text
-Gemini
-  │
-  ├── 🔎 Google Search
-  ├── 📄 Document Retrieval
-  ├── 🗄️ Database
-  ├── 🌐 APIs
-  └── 🧮 Custom Tools
-```
-
-### Advanced Architecture
-
-The next evolution could introduce a proper **RAG pipeline**, where the model can retrieve information from a private knowledge base in addition to the public web.
+* How to initialize and interact with the Google GenAI SDK
+* How tool-enabled generation works
+* What **grounding** means in a generative AI system
+* How Google Search can provide external context to an LLM
+* How multi-turn chat sessions preserve conversation context
+* How grounding metadata can be inspected
+* Why current-information questions require more than model knowledge
+* How environment variables should be used for API credentials
 
 ---
 
-## 🎯 Project Takeaway
+## 🚀 Where This Could Go Next
 
-The most important lesson from this project is that building useful AI applications is not only about choosing a powerful model.
-
-The surrounding system matters:
+This project is intentionally lightweight, but the architecture opens the door to a much larger system.
 
 ```text
-             MODEL
-               +
-             CONTEXT
-               +
-             TOOLS
-               +
-           EXTERNAL DATA
-               ↓
-        USEFUL AI SYSTEM
+Current
+   │
+   ▼
+Gemini + Google Search
+   │
+   ├── Web citations
+   ├── Streamlit UI
+   ├── Conversation history
+   ├── Source previews
+   ├── Document upload
+   ├── RAG pipeline
+   └── Agentic tool calling
 ```
 
-This project was an early exploration of that idea—moving from a simple **"ask the model"** interaction toward an AI system that can **use external information to improve its responses**.
+A future version could evolve from a terminal chatbot into a complete **grounded AI research assistant** capable of searching, comparing sources, processing documents, and presenting evidence alongside its answers.
+
+---
+
+## 🧩 The Bigger Idea
+
+The most important takeaway from this project isn't the chatbot itself.
+
+It's the idea of **grounding**.
+
+Generative AI is powerful at reasoning and language generation, but useful AI systems often need access to information outside the model.
+
+That leads to a broader architecture:
+
+```text
+        ┌─────────────┐
+        │     User    │
+        └──────┬──────┘
+               │
+               ▼
+        ┌─────────────┐
+        │     LLM     │
+        └──────┬──────┘
+               │
+        ┌──────┴──────┐
+        │             │
+        ▼             ▼
+   Model Knowledge   Tools
+                      │
+                      ▼
+                External Data
+                      │
+                      ▼
+              Grounded Answer
+```
+
+This project is my small exploration of that architecture — moving from **“an LLM that generates”** toward **“an AI system that can retrieve and generate.”**
+
+---
+
+<p align="center">
+  Built while exploring <b>Generative AI, LLM tools, grounding and conversational systems.</b>
+</p>
